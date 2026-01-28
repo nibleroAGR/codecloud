@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CODE_CLOUD | Professional IDE</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/theme/dracula.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/mode/css/css.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --header-h: 90px;
+            --sidebar-w: 65px;
+            --drawer-w: 280px;
+            --accent: #00d2ff;
+            --danger: #ff4d4d;
+            --border: #2d2d2d;
+            --bg-sidebar: #0e0e0e;
+            --bg-drawer: #151515;
+            --bg-modal: #121212;
+        }
+
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Inter', sans-serif; background: #000; color: white; overflow: hidden; }
+
+        /* --- UI COMPONENTS --- */
+        .header { height: var(--header-h); background: #0a0a0a; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; box-sizing: border-box; z-index: 1000; }
+        .header-logo { height: 45px; width: auto; flex-shrink: 0; }
+        .ad-space { flex: 1; margin: 0 40px; height: 70px; background: rgba(255,255,255,0.02); border: 1px dashed #333; display: flex; align-items: center; justify-content: center; color: #444; font-size: 0.75rem; border-radius: 6px; }
+
+        .app-body { display: flex; height: calc(100vh - var(--header-h)); position: relative; }
+
+        /* Sidebar */
+        .sidebar { width: var(--sidebar-w); background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 20px 0; z-index: 600; }
+        .nav-item { width: 42px; height: 42px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; border-radius: 10px; cursor: pointer; color: #666; transition: 0.2s; }
+        .nav-item:hover, .nav-item.active { background: #222; color: var(--accent); }
+        .nav-item svg { width: 22px; height: 22px; }
+
+        /* Drawer */
+        .drawer { position: absolute; top: 0; bottom: 0; left: -400px; width: var(--drawer-w); background: var(--bg-drawer); border-right: 1px solid var(--border); z-index: 500; padding: 20px; padding-left: 80px; box-sizing: border-box; transition: 0.3s; box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
+        .drawer.open { left: 0; }
+
+        /* Workspace */
+        .workspace { flex: 1; display: flex; overflow: hidden; }
+        .editor-container { width: 50%; height: 100%; border-right: 1px solid var(--border); transition: width 0.3s; }
+        .preview-container { width: 50%; height: 100%; background: white; transition: width 0.3s; }
+        .hidden { display: none !important; }
+        .full-width { width: 100% !important; border: none; }
+        .CodeMirror { height: 100%; font-size: 15px; }
+        iframe { width: 100%; height: 100%; border: none; background: white; }
+
+        /* --- MODALES --- */
+        .modal-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
+        .modal-content { background: var(--bg-modal); border: 1px solid #333; border-radius: 16px; width: 100%; max-width: 800px; max-height: 85vh; overflow-y: auto; padding: 40px; position: relative; }
+
+        /* Estilos del Manual Pro */
+        .manual-section { margin-bottom: 30px; }
+        .manual-h3 { color: var(--accent); border-bottom: 1px solid #2d2d2d; padding-bottom: 10px; margin-bottom: 15px; font-size: 1rem; letter-spacing: 1px; }
+        .icon-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .icon-table td { padding: 12px; border-bottom: 1px solid #1a1a1a; }
+        .icon-table i { color: var(--accent); }
+        .faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .faq-box { background: #1a1a1a; padding: 15px; border-radius: 8px; border-left: 3px solid var(--accent); }
+        .faq-q { font-weight: bold; font-size: 0.8rem; margin-bottom: 5px; color: #eee; }
+        .faq-a { font-size: 0.75rem; color: #888; line-height: 1.4; }
+
+        /* Auth Tabs */
+        .auth-tabs { display: flex; border-bottom: 1px solid #2d2d2d; margin: -10px -10px 20px -10px; }
+        .auth-tab { flex: 1; text-align: center; padding: 12px; cursor: pointer; color: #666; font-size: 0.9rem; font-weight: bold; transition: 0.3s; }
+        .auth-tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); background: rgba(0, 210, 255, 0.05); }
+
+        .auth-input { width: 100%; padding: 12px; background: #000; border: 1px solid #2d2d2d; color: white; border-radius: 8px; box-sizing: border-box; outline: none; margin-bottom: 15px; }
+        .btn-primary { width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: #000; transition: 0.2s; }
+        .btn-primary:hover { opacity: 0.9; }
+
+        .project-card { padding: 12px; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+        #import-input { display: none; }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <img src="logo.png" alt="CODE_CLOUD" class="header-logo">
+        <div class="ad-space">ESPACIO PUBLICITARIO (LEADERBOARD 728x90)</div>
+        <div id="user-display" style="font-size: 0.7rem; color: #444;">Invitado</div>
+    </header>
+
+    <div class="app-body">
+        <aside class="sidebar">
+            <div class="nav-item" title="Nuevo Proyecto" onclick="newProject()"><i data-lucide="plus"></i></div>
+            <div class="nav-item" title="Sincronizar Nube" onclick="openSave()"><i data-lucide="cloud-upload"></i></div>
+            <div class="nav-item" id="btn-lib" title="Biblioteca" onclick="toggleLib()"><i data-lucide="library"></i></div>
+            <div class="nav-item" id="btn-view" title="Cambiar Vista" onclick="changeView()"><i data-lucide="eye"></i></div>
+            <div class="nav-item" title="Exportar .html" onclick="exportFile()"><i data-lucide="download"></i></div>
+            <div class="nav-item" title="Importar .html" onclick="triggerImport()"><i data-lucide="upload"></i></div>
+            <div style="flex-grow: 1;"></div>
+            <div class="nav-item" title="Guía de Usuario" onclick="openManual()" style="color: var(--accent);"><i data-lucide="help-circle"></i></div>
+            <div class="nav-item" id="user-icon" onclick="handleAuth()"><i data-lucide="user"></i></div>
+        </aside>
+
+        <div class="drawer" id="library-drawer">
+            <h3 style="color:var(--accent); display:flex; justify-content:space-between; margin-top:0; font-size: 1rem;">
+                BIBLIOTECA <i data-lucide="x" onclick="toggleLib()" style="cursor:pointer; width:18px;"></i>
+            </h3>
+            <div id="project-list-items"></div>
+        </div>
+
+        <main class="workspace">
+            <div class="editor-container" id="sec-editor"><textarea id="ed-textarea"></textarea></div>
+            <div class="preview-container" id="sec-preview"><iframe id="res-frame"></iframe></div>
+        </main>
+    </div>
+
+    <div class="modal-bg" id="manual-modal">
+        <div class="modal-content">
+            <i data-lucide="x" style="position:absolute; top:20px; right:20px; cursor:pointer; color:#555" onclick="closeModals()"></i>
+            <h2 style="color:var(--accent); margin-top:0; display:flex; align-items:center; gap:10px;">
+                <i data-lucide="book-open"></i> Centro de Ayuda CODE_CLOUD
+            </h2>
+            
+            <div class="manual-section">
+                <h3 class="manual-h3">FUNCIONAMIENTO GENERAL</h3>
+                <p style="font-size:0.85rem; color:#aaa; line-height:1.6;">
+                    CODE_CLOUD es un IDE web de alto rendimiento. Escribe tu código HTML/CSS/JS en el editor y observa los resultados en tiempo real. 
+                    Para habilitar el almacenamiento en la nube, debes crear una cuenta gratuita. Una vez autenticado, podrás guardar tus progresos 
+                    y acceder a ellos desde cualquier dispositivo a través de la Biblioteca.
+                </p>
+            </div>
+
+            <div class="manual-section">
+                <h3 class="manual-h3">DICCIONARIO DE FUNCIONES</h3>
+                <table class="icon-table">
+                    <tr><td><i data-lucide="plus"></i></td><td><b>Nuevo Proyecto:</b> Reinicia el editor para un nuevo desarrollo.</td><td><i data-lucide="cloud-upload"></i></td><td><b>Sincronizar:</b> Guarda el estado actual en tu cuenta de la nube.</td></tr>
+                    <tr><td><i data-lucide="library"></i></td><td><b>Biblioteca:</b> Gestiona y carga tus proyectos guardados.</td><td><i data-lucide="eye"></i></td><td><b>Vistas:</b> Alterna entre editor, preview o pantalla dividida.</td></tr>
+                    <tr><td><i data-lucide="download"></i></td><td><b>Exportar:</b> Descarga tu código como un archivo .html local.</td><td><i data-lucide="upload"></i></td><td><b>Importar:</b> Carga un archivo .html desde tu ordenador al editor.</td></tr>
+                </table>
+            </div>
+
+            <div class="manual-section">
+                <h3 class="manual-h3">PREGUNTAS FRECUENTES (FAQ)</h3>
+                <div class="faq-grid">
+                    <div class="faq-box"><div class="faq-q">1. ¿Es obligatorio registrarse?</div><div class="faq-a">No para programar, pero sí para guardar tus proyectos en la nube.</div></div>
+                    <div class="faq-box"><div class="faq-q">2. ¿Puedo usar CSS y JS?</div><div class="faq-a">Sí, el sistema interpreta etiquetas &lt;style&gt; y &lt;script&gt; sin problemas.</div></div>
+                    <div class="faq-box"><div class="faq-q">3. ¿Cómo borro un proyecto?</div><div class="faq-a">En la Biblioteca, pulsa el icono de papelera. La eliminación es irreversible.</div></div>
+                    <div class="faq-box"><div class="faq-q">4. ¿Mis proyectos son privados?</div><div class="faq-a">Sí, solo tú puedes ver el código asociado a tu cuenta de usuario.</div></div>
+                    <div class="faq-box"><div class="faq-q">5. ¿Hay límite de proyectos?</div><div class="faq-a">No, puedes guardar tantos experimentos como necesites en la nube.</div></div>
+                    <div class="faq-box"><div class="faq-q">6. ¿Puedo usar librerías CDN?</div><div class="faq-a">Sí, puedes enlazar Bootstrap, Tailwind o Google Fonts en el encabezado.</div></div>
+                    <div class="faq-box"><div class="faq-q">7. ¿Funciona sin internet?</div><div class="faq-a">El editor funcionará, pero no podrás sincronizar ni cargar la biblioteca.</div></div>
+                    <div class="faq-box"><div class="faq-q">8. ¿El guardado es automático?</div><div class="faq-a">No, debes pulsar manualmente el icono de la nube para asegurar cambios.</div></div>
+                    <div class="faq-box"><div class="faq-q">9. ¿Puedo programar Backend?</div><div class="faq-a">No, CODE_CLOUD es una herramienta centrada exclusivamente en Frontend.</div></div>
+                    <div class="faq-box"><div class="faq-q">10. ¿Cómo descargo mi código?</div><div class="faq-a">Usa el icono de flecha hacia abajo (Exportar) para obtener tu archivo .html.</div></div>
+                </div>
+            </div>
+
+            <button onclick="closeModals()" class="btn-primary" style="margin-top:20px;">Entendido</button>
+        </div>
+    </div>
+
+    <div class="modal-bg" id="auth-modal">
+        <div class="modal-content" style="max-width:350px">
+            <i data-lucide="x" style="position:absolute; top:20px; right:20px; cursor:pointer; color:#555" onclick="closeModals()"></i>
+            <div class="auth-tabs">
+                <div class="auth-tab active" id="tab-login" onclick="setAuthMode('login')">Entrar</div>
+                <div class="auth-tab" id="tab-register" onclick="setAuthMode('register')">Registrarse</div>
+            </div>
+            <input type="email" id="auth-email" placeholder="Email" class="auth-input">
+            <input type="password" id="auth-pass" placeholder="Contraseña" class="auth-input">
+            <button onclick="executeAuth()" id="auth-main-btn" class="btn-primary">Iniciar Sesión</button>
+            <p id="auth-error" style="color:var(--danger); font-size: 0.75rem; margin-top: 15px; text-align: center; display: none;"></p>
+        </div>
+    </div>
+
+    <div class="modal-bg" id="save-modal">
+        <div class="modal-content" style="max-width:300px">
+            <h3 style="margin-top:0">Sincronizar Nube</h3>
+            <input type="text" id="proj-name-input" placeholder="Nombre del proyecto" class="auth-input">
+            <button onclick="saveToCloud()" class="btn-primary">Guardar en la nube</button>
+            <button onclick="closeModals()" style="background:none; color:#555; border:none; width:100%; margin-top:10px; cursor:pointer">Cancelar</button>
+        </div>
+    </div>
+
+    <input type="file" id="import-input" accept=".html">
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyAZ0BULc3KDh71l1_neyQiW54sTo_muQVg", authDomain: "html-127c3.firebaseapp.com", projectId: "html-127c3", storageBucket: "html-127c3.firebasestorage.app", messagingSenderId: "873979319873", appId: "1:873979319873:web:de658124ac684835a418c0" };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth(), db = firebase.firestore();
+
+        document.addEventListener('DOMContentLoaded', () => { lucide.createIcons(); });
+
+        const editor = CodeMirror.fromTextArea(document.getElementById("ed-textarea"), {
+            mode: "htmlmixed", theme: "dracula", lineNumbers: true, autoCloseTags: true
+        });
+
+        editor.on('change', () => {
+            const frame = document.getElementById('res-frame').contentDocument;
+            frame.open(); frame.write(editor.getValue()); frame.close();
+        });
+
+        // --- AUTH LOGIC ---
+        let authMode = 'login';
+        function setAuthMode(mode) {
+            authMode = mode;
+            document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+            document.getElementById('tab-register').classList.toggle('active', mode === 'register');
+            document.getElementById('auth-main-btn').innerText = mode === 'login' ? "Iniciar Sesión" : "Crear Cuenta Nueva";
+            document.getElementById('auth-error').style.display = 'none';
+        }
+
+        function handleAuth() {
+            if (auth.currentUser) { if (confirm("¿Cerrar sesión?")) auth.signOut(); }
+            else { setAuthMode('login'); document.getElementById('auth-modal').style.display = 'flex'; lucide.createIcons(); }
+        }
+
+        async function executeAuth() {
+            const email = document.getElementById('auth-email').value.trim();
+            const pass = document.getElementById('auth-pass').value;
+            const errorEl = document.getElementById('auth-error');
+            if (!email || !pass) return;
+
+            try {
+                if (authMode === 'login') {
+                    await auth.signInWithEmailAndPassword(email, pass);
+                    closeModals();
+                } else {
+                    await auth.createUserWithEmailAndPassword(email, pass);
+                    alert("Usuario creado correctamente, ya puedes acceder con esos datos.");
+                    setAuthMode('login');
+                }
+            } catch (e) {
+                if (e.code === 'auth/email-already-in-use') errorEl.innerText = "El usuario ya existe";
+                else if (e.code === 'auth/invalid-login-credentials' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found') errorEl.innerText = "Nombre o contraseña no válidos";
+                else errorEl.innerText = "Error: " + e.message;
+                errorEl.style.display = 'block';
+            }
+        }
+
+        // --- CLOUD ACTIONS ---
+        async function loadData() {
+            const list = document.getElementById('project-list-items');
+            const snap = await db.collection('projects').doc(auth.currentUser.uid).collection('saved').orderBy('date', 'desc').get();
+            list.innerHTML = snap.empty ? '<p style="color:#333; font-size:0.8rem">No hay proyectos.</p>' : '';
+            snap.forEach(doc => {
+                const data = doc.data();
+                const card = document.createElement('div');
+                card.className = 'project-card';
+                card.onclick = () => { editor.setValue(data.code); toggleLib(); };
+                card.innerHTML = `
+                    <div class="project-info">
+                        <strong>${data.name}</strong>
+                        <small style="color:#555">${data.date?.toDate().toLocaleDateString() || ''}</small>
+                    </div>
+                    <div class="btn-delete" title="Borrar" onclick="deleteProject(event, '${doc.id}', '${data.name}')">
+                        <i data-lucide="trash-2" style="width:18px; height:18px;"></i>
+                    </div>`;
+                list.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        async function saveToCloud() {
+            const name = document.getElementById('proj-name-input').value.trim();
+            if(!name) return;
+            try {
+                await db.collection('projects').doc(auth.currentUser.uid).collection('saved').add({
+                    name: name, code: editor.getValue(), date: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                closeModals();
+                if(document.getElementById('library-drawer').classList.contains('open')) loadData();
+            } catch(e) { alert("Error al guardar."); }
+        }
+
+        async function deleteProject(e, id, name) {
+            e.stopPropagation();
+            if(confirm(`¿Eliminar "${name}" permanentemente?`)) { 
+                await db.collection('projects').doc(auth.currentUser.uid).collection('saved').doc(id).delete(); 
+                loadData(); 
+            }
+        }
+
+        // --- UI UTILS ---
+        function openManual() { document.getElementById('manual-modal').style.display = 'flex'; lucide.createIcons(); }
+        function toggleLib() {
+            const lib = document.getElementById('library-drawer');
+            lib.classList.toggle('open');
+            if(lib.classList.contains('open') && auth.currentUser) loadData();
+        }
+        function openSave() { if(!auth.currentUser) return handleAuth(); document.getElementById('save-modal').style.display='flex'; }
+        function closeModals() { document.querySelectorAll('.modal-bg').forEach(m => m.style.display='none'); }
+        function newProject() { if(confirm("¿Vaciar editor?")) editor.setValue(""); }
+        
+        function triggerImport() { document.getElementById('import-input').click(); }
+        document.getElementById('import-input').onchange = (e) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => { editor.setValue(ev.target.result); e.target.value = ''; };
+            reader.readAsText(e.target.files[0]);
+        };
+
+        function exportFile() {
+            const blob = new Blob([editor.getValue()], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = (document.getElementById('proj-name-input').value || 'proyecto_cloud') + '.html';
+            a.click();
+        }
+
+        function changeView() {
+            const ed = document.getElementById('sec-editor'), pr = document.getElementById('sec-preview');
+            if (!ed.classList.contains('hidden') && !pr.classList.contains('hidden')) { pr.classList.add('hidden'); ed.classList.add('full-width'); }
+            else if (pr.classList.contains('hidden')) { ed.classList.add('hidden'); ed.classList.remove('full-width'); pr.classList.remove('hidden'); pr.classList.add('full-width'); }
+            else { ed.classList.remove('hidden'); pr.classList.remove('full-width'); pr.classList.remove('hidden'); }
+            setTimeout(() => editor.refresh(), 100);
+        }
+
+        auth.onAuthStateChanged(user => {
+            document.getElementById('user-icon').style.color = user ? 'var(--accent)' : '#666';
+            document.getElementById('user-display').innerText = user ? user.email : "Invitado";
+        });
+
+        editor.setValue("<h1>CODE_CLOUD</h1>\n<p>Explora la nueva guía profesional pulsando el icono de ayuda.</p>");
+    </script>
+</body>
+</html>
