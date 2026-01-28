@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CODE_CLOUD | Professional Cloud IDE</title>
+    
+    <meta name="description" content="El IDE en la nube más rápido. Programa HTML, CSS y JS con vista previa en tiempo real.">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/theme/dracula.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/mode/css/css.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --header-h: 70px;
+            --sidebar-w: 65px;
+            --accent: #00d2ff;
+            --border: #2d2d2d;
+            --bg-sidebar: #0e0e0e;
+            --bg-modal: #121212;
+        }
+
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Inter', sans-serif; background: #000; color: white; overflow: hidden; }
+
+        .header { height: var(--header-h); background: #0a0a0a; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; box-sizing: border-box; }
+        .header-logo { height: 35px; }
+        .ad-space { flex: 1; margin: 0 20px; height: 50px; background: rgba(255,255,255,0.02); border: 1px dashed #333; display: flex; align-items: center; justify-content: center; color: #444; font-size: 0.6rem; border-radius: 6px; }
+
+        .app-body { display: flex; height: calc(100vh - var(--header-h)); }
+
+        .sidebar { width: var(--sidebar-w); background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 15px 0; }
+        .nav-item { width: 45px; height: 45px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; border-radius: 10px; cursor: pointer; color: #666; transition: 0.2s; }
+        .nav-item:hover { color: var(--accent); background: #1a1a1a; }
+
+        /* Workspace Responsivo */
+        .workspace { flex: 1; display: flex; overflow: hidden; }
+        .editor-container, .preview-container { width: 50%; height: 100%; transition: 0.3s; }
+        .preview-container { background: white; }
+        iframe { width: 100%; height: 100%; border: none; }
+        .CodeMirror { height: 100%; font-size: 14px; }
+
+        /* Banner Invitado Adaptable */
+        #guest-banner {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 50%; background: #151515; border: 1px solid #2d2d2d;
+            border-left: 4px solid var(--accent); padding: 12px 20px;
+            border-radius: 10px; display: none; align-items: center;
+            justify-content: space-between; z-index: 3000; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* MODALES */
+        .modal-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 4000; padding: 15px; }
+        .modal-content { background: var(--bg-modal); border: 1px solid #333; border-radius: 12px; width: 100%; max-width: 600px; padding: 25px; max-height: 90vh; overflow-y: auto; position: relative; }
+
+        /* --- MEDIA QUERIES (MAGIA MOBILE) --- */
+        @media (max-width: 768px) {
+            .header { height: 60px; }
+            .ad-space { display: none; } /* Ocultamos publicidad en móvil para ganar espacio */
+            .sidebar { width: 55px; }
+            .workspace { flex-direction: column; } /* Apilado vertical */
+            .editor-container, .preview-container { width: 100%; height: 50%; }
+            #guest-banner { width: 90%; flex-direction: column; gap: 10px; text-align: center; }
+            .btn-mini-reg { width: 100%; }
+        }
+
+        /* Estilos Extra */
+        .auth-input { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: #fff; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; }
+        .btn-primary { width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .auth-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #222; }
+        .auth-tab { padding: 10px; cursor: pointer; color: #555; font-size: 0.9rem; }
+        .auth-tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <img src="logo.png" alt="CODE_CLOUD" class="header-logo">
+        <div class="ad-space">ESPACIO PUBLICITARIO</div>
+        <div id="user-display" style="font-size: 0.7rem; color: #444;">Invitado</div>
+    </header>
+
+    <div class="app-body">
+        <aside class="sidebar">
+            <div class="nav-item" title="Nuevo" onclick="newProject()"><i data-lucide="plus"></i></div>
+            <div class="nav-item" title="Guardar" onclick="openSave()"><i data-lucide="cloud-upload"></i></div>
+            <div class="nav-item" title="Vistas" onclick="changeView()"><i data-lucide="eye"></i></div>
+            <div style="flex-grow: 1;"></div>
+            <div class="nav-item" title="Ayuda" onclick="openManual()"><i data-lucide="help-circle"></i></div>
+            <div class="nav-item" id="user-icon" onclick="handleAuth()"><i data-lucide="user"></i></div>
+        </aside>
+
+        <div id="guest-banner">
+            <p style="font-size: 0.8rem; margin: 0;">¿Quieres guardar tus proyectos? <b>¡Regístrate gratis!</b></p>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-mini-reg" onclick="openRegisterBanner()" style="background: var(--accent); border:none; padding: 5px 10px; border-radius: 4px; font-weight: bold; cursor:pointer;">Registrarse</button>
+                <button onclick="closeGuestBanner()" style="background:none; border:none; color:#555; cursor:pointer;"><i data-lucide="x" style="width:16px;"></i></button>
+            </div>
+        </div>
+
+        <main class="workspace">
+            <div class="editor-container" id="sec-editor"><textarea id="ed-textarea"></textarea></div>
+            <div class="preview-container" id="sec-preview"><iframe id="res-frame"></iframe></div>
+        </main>
+    </div>
+
+    <div class="modal-bg" id="auth-modal">
+        <div class="modal-content" style="max-width:320px">
+            <i data-lucide="x" style="position:absolute; top:15px; right:15px; cursor:pointer; color:#444" onclick="closeModals()"></i>
+            <div class="auth-tabs">
+                <div class="auth-tab active" id="tab-login" onclick="setAuthMode('login')">Entrar</div>
+                <div class="auth-tab" id="tab-register" onclick="setAuthMode('register')">Registrarse</div>
+            </div>
+            <input type="email" id="auth-email" placeholder="Email" class="auth-input">
+            <input type="password" id="auth-pass" placeholder="Contraseña" class="auth-input">
+            <button onclick="executeAuth()" id="auth-main-btn" class="btn-primary">Entrar</button>
+            <p id="auth-error" style="color:red; font-size: 0.7rem; margin-top:10px; display:none;"></p>
+        </div>
+    </div>
+
+    <script>
+        // Configuración Nube
+        const firebaseConfig = { apiKey: "AIzaSyAZ0BULc3KDh71l1_neyQiW54sTo_muQVg", authDomain: "html-127c3.firebaseapp.com", projectId: "html-127c3", storageBucket: "html-127c3.firebasestorage.app", messagingSenderId: "873979319873", appId: "1:873979319873:web:de658124ac684835a418c0" };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth(), db = firebase.firestore();
+
+        document.addEventListener('DOMContentLoaded', () => { lucide.createIcons(); });
+
+        const editor = CodeMirror.fromTextArea(document.getElementById("ed-textarea"), {
+            mode: "htmlmixed", theme: "dracula", lineNumbers: true, autoCloseTags: true
+        });
+
+        editor.on('change', () => {
+            const frame = document.getElementById('res-frame').contentDocument;
+            frame.open(); frame.write(editor.getValue()); frame.close();
+        });
+
+        // --- AUTH ---
+        let authMode = 'login';
+        function setAuthMode(mode) {
+            authMode = mode;
+            document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+            document.getElementById('tab-register').classList.toggle('active', mode === 'register');
+            document.getElementById('auth-main-btn').innerText = mode === 'login' ? "Iniciar Sesión" : "Crear Cuenta";
+        }
+
+        async function executeAuth() {
+            const email = document.getElementById('auth-email').value, pass = document.getElementById('auth-pass').value;
+            const errorEl = document.getElementById('auth-error');
+            try {
+                if (authMode === 'login') await auth.signInWithEmailAndPassword(email, pass);
+                else { await auth.createUserWithEmailAndPassword(email, pass); alert("¡Cuenta creada!"); }
+                closeModals();
+            } catch (e) {
+                errorEl.innerText = "Nombre o contraseña no válidos";
+                errorEl.style.display = 'block';
+            }
+        }
+
+        function handleAuth() {
+            if (auth.currentUser) { if(confirm("¿Cerrar sesión?")) auth.signOut(); }
+            else { document.getElementById('auth-modal').style.display = 'flex'; }
+        }
+
+        // --- UI ---
+        function closeModals() { document.querySelectorAll('.modal-bg').forEach(m => m.style.display='none'); }
+        function closeGuestBanner() { document.getElementById('guest-banner').style.display = 'none'; }
+        function openRegisterBanner() { setAuthMode('register'); document.getElementById('auth-modal').style.display = 'flex'; }
+        
+        function changeView() {
+            const ed = document.getElementById('sec-editor'), pr = document.getElementById('sec-preview');
+            const isMobile = window.innerWidth <= 768;
+            
+            if (ed.style.display === 'none') {
+                ed.style.display = 'block'; pr.style.display = 'block';
+                if(!isMobile) { ed.style.width = '50%'; pr.style.width = '50%'; }
+            } else {
+                ed.style.display = 'none'; pr.style.width = '100%';
+            }
+            setTimeout(() => editor.refresh(), 100);
+        }
+
+        auth.onAuthStateChanged(user => {
+            document.getElementById('user-display').innerText = user ? user.email : "Invitado";
+            document.getElementById('guest-banner').style.display = user ? 'none' : 'flex';
+            document.getElementById('user-icon').style.color = user ? 'var(--accent)' : '#666';
+        });
+
+        editor.setValue("<h1>CODE_CLOUD</h1>\n<p>Diseño optimizado para móviles.</p>");
+    </script>
+</body>
+</html>
